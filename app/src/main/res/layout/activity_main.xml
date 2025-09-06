@@ -64,7 +64,6 @@
             style="@style/functionalButton"
             android:text="⌫"
             android:textColor="@color/orange"
-
             android:onClick="backSpaceAction"/>
         <Button
             style="@style/functionalButton"
@@ -73,8 +72,7 @@
         <Button
             style="@style/functionalButton"
             android:text="÷"
-            android:textSize="30sp"
-            android:onClick="divideAction"/>
+            android:textSize="30sp" />
     </LinearLayout>
     <LinearLayout
         style="@style/buttonRow">
@@ -91,8 +89,7 @@
         <Button
             style="@style/functionalButton"
             android:text="×"
-            android:textSize="30sp"
-            android:onClick="multiplyAction"/>
+            android:textSize="30sp" />
     </LinearLayout>
     <LinearLayout
         style="@style/buttonRow">
@@ -109,8 +106,7 @@
         <Button
             style="@style/functionalButton"
             android:text="-"
-            android:textSize="40sp"
-            android:onClick="subAction"/>
+            android:textSize="40sp"/>
     </LinearLayout>
     <LinearLayout
         style="@style/buttonRow">
@@ -127,8 +123,7 @@
         <Button
             style="@style/functionalButton"
             android:text="+"
-            android:textSize="30sp"
-            android:onClick="addAction"/>
+            android:textSize="30sp" />
     </LinearLayout>
     <LinearLayout
         style="@style/buttonRow">
