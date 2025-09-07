@@ -1,13 +1,18 @@
 package com.example.calculator
 
 import android.os.Bundle
+import android.util.TypedValue
 import android.view.View
 import android.widget.Button
 import android.widget.TextView
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import java.math.BigDecimal
+import java.math.RoundingMode
+import kotlin.text.isEmpty
 
 class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -21,7 +26,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         inputValsTV = findViewById<TextView>(R.id.inputValsTV)
-        inputValsTV.text = "0"
+        inputValsTV.text = ""
         resultTV = findViewById<TextView>(R.id.resultTV)
         resultTV.text = "0"
     }
@@ -32,43 +37,74 @@ class MainActivity : AppCompatActivity() {
 
     // Variables
     var commaIsPlaced: Boolean = false
-
+    var equalsIsPressed: Boolean = false
+    var lastResult: String = ""
     val operatorsList: Array<String> = arrayOf("÷","×","-","+","=")
 
 
     // Functions
     fun clearAllAction(view: View) {
-        inputValsTV.text = "0"
+        inputValsTV.text = ""
         resultTV.text = "0"
         commaIsPlaced = false
+        equalsIsPressed = false
+        lastResult = ""
+        resetStyles()
     }
 
     fun backSpaceAction(view: View) {
-        if(inputValsTV.text.length > 0){
-            inputValsTV.text = inputValsTV.text.subSequence(0,inputValsTV.text.length-1)
-            if(inputValsTV.text.length == 0){
-                inputValsTV.text = "0"
+        if(view is Button){
+            if(equalsIsPressed) return
+            if(inputValsTV.text.length > 0){
+                inputValsTV.text = inputValsTV.text.subSequence(0,inputValsTV.text.length-1)
+                if(inputValsTV.text.length == 0){
+                    inputValsTV.text = ""
+                    resultTV.text = "0"
+                    resetStyles()
+                    return
+                }
+                val lastChar = inputValsTV.text.get(inputValsTV.text.length -1).toString()
+                if(lastChar in operatorsList || lastChar == ","){
+                    calculateResult(trimmed = true)
+                } else {
+                    calculateResult()
+                }
             }
         }
-        calculateResult()
     }
 
     fun typeNumberAction(view: View) {
         if (view is Button){
-            val lastChar  = inputValsTV.text.get(inputValsTV.text.length - 1).toString()
-            if(inputValsTV.text.toString() == "0"){
+            if(inputValsTV.text.isEmpty() || inputValsTV.text.toString() == "0"){
                 inputValsTV.text = view.text.toString()
             } else{
-                inputValsTV.append(view.text)
+                if(equalsIsPressed){
+                    inputValsTV.text = lastResult + view.text.toString()
+                    equalsIsPressed = false
+                    lastResult = ""
+                } else{
+                    inputValsTV.append(view.text)
+                }
             }
             commaIsPlaced = false
             calculateResult()
+            resetStyles()
         }
     }
     fun typeFunctionalSignAction(view: View){
         if(!commaIsPlaced){
             if (view is Button) {
-                val lastChar  = inputValsTV.text.get(inputValsTV.text.length - 1).toString()
+                if(inputValsTV.text.isEmpty()){
+                    inputValsTV.append("0"+view.text)
+                    resetStyles()
+                    return
+                }
+                if(equalsIsPressed){
+                    inputValsTV.text = lastResult
+                    equalsIsPressed = false
+                    lastResult = ""
+                }
+                val lastChar = inputValsTV.text.last().toString()
                 if(lastChar in operatorsList){
                     val currentText = inputValsTV.text.toString()
                     val newText = currentText.subSequence(0, inputValsTV.text.length-1).toString() + view.text.toString()
@@ -77,35 +113,49 @@ class MainActivity : AppCompatActivity() {
                     inputValsTV.append(view.text)
                     commaIsPlaced = false
                 }
+                resetStyles()
             }
         }
     }
 
     fun percentAction(view: View){
         if(!commaIsPlaced){
-            val expr = inputValsTV.text.toString()
-            val lastOperatorIndex = expr.lastIndexOfAny(charArrayOf('+','-','÷','×'))
-            val lastNum = if (lastOperatorIndex == -1) expr else expr.substring(lastOperatorIndex + 1)
+            if(view is Button){
+                if(inputValsTV.text.isEmpty()) return
+                if(equalsIsPressed){
+                    inputValsTV.text = lastResult
+                }
+                if(inputValsTV.text.last().toString() in operatorsList) return
+                val expr = inputValsTV.text.toString()
+                val lastOperatorIndex = expr.lastIndexOfAny(charArrayOf('+','-','÷','×'))
+                val lastNum = if (lastOperatorIndex == -1) expr else expr.substring(lastOperatorIndex + 1)
 
-            try {
-                val number = lastNum.replace(",",".").toDouble()
-                val percentValue = number / 100
+                try {
+                    val number = lastNum.replace(",",".").toDouble()
+                    val percentValue = number / 100
 
-                var newExpr = expr.replace(lastNum, percentValue.toString().replace(".",","))
+                    val prefix = if(lastOperatorIndex == -1) "" else expr.subSequence(0, lastOperatorIndex + 1).toString()
+                    val newExpr = prefix + formatResult(percentValue)
 
-                inputValsTV.text = newExpr
-                calculateResult()
+                    inputValsTV.text = newExpr
+                    calculateResult()
+                    resetStyles()
 
-            } catch (e: Exception) {
-                resultTV.text = "Error"
+                } catch (e: Exception) {
+                    resultTV.text = "Error"
+                }
             }
-
         }
     }
 
     fun commaAction(view: View) {
         if(!commaIsPlaced){
             if(view is Button) {
+                if(inputValsTV.text.isEmpty()){
+                    inputValsTV.append("0"+view.text)
+                    commaIsPlaced = true
+                    return
+                }
                 val lastChar = inputValsTV.text.get(inputValsTV.text.length - 1).toString()
                 if(lastChar !in operatorsList){
                     var isComaPlacedInAlready = false
@@ -127,28 +177,84 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
+
     fun equalsAction(view: View) {
-        calculateResult()
+        if(inputValsTV.text.last().toString() in operatorsList){
+            calculateResult(true)
+        }else{
+            calculateResult()
+        }
+        inputValsTV.setTextColor(ContextCompat.getColor(this, R.color.white))
+        resultTV.setTextColor(ContextCompat.getColor(this, R.color.white))
+        inputValsTV.setTextSize(TypedValue.COMPLEX_UNIT_SP,25f)
+        resultTV.setTextSize(TypedValue.COMPLEX_UNIT_SP, 40f)
+
+        equalsIsPressed = true
+        lastResult = resultTV.text.toString().replace("=","").trim()
     }
 
-    fun calculateResult(){
-        val expression = inputValsTV.text.toString().replace(",",".")
-        if(expression == "0"){
-            resultTV.text = "0"
+    fun resetStyles() {
+        if(inputValsTV.text.isEmpty()){
+            resultTV.setTextColor(ContextCompat.getColor(this, R.color.white))
+            resultTV.setTextSize(TypedValue.COMPLEX_UNIT_SP, 40f)
+        } else{
+            inputValsTV.setTextColor(ContextCompat.getColor(this, R.color.white))
+            resultTV.setTextColor(ContextCompat.getColor(this, R.color.gray))
+            inputValsTV.setTextSize(TypedValue.COMPLEX_UNIT_SP, 40f)
+            resultTV.setTextSize(TypedValue.COMPLEX_UNIT_SP, 25f)
+        }
+    }
+
+    fun showResult(result: String) {
+        resultTV.text = "= "+ result
+    }
+
+    fun formatResult(value: Double, scale: Int = 6): String {
+        val bd = BigDecimal(value).setScale(scale, RoundingMode.HALF_UP).stripTrailingZeros()
+        return bd.toPlainString().replace(".",",")
+    }
+
+    fun calculateResult(trimmed: Boolean = false){
+        var expression = inputValsTV.text.toString().replace(",",".")
+
+        if(expression == ""){
+            showResult("0")
             return
         }
 
+        if(trimmed){
+            expression = expression.subSequence(0, expression.length-1).toString()
+        }
+
         try {
+
             val tokens = expression.split(Regex("(?<=[÷×+-])|(?=[÷×+-])"))
+                .map{ it.trim() }
+                .filter{ it.isNotEmpty()}
+
             val numbers = mutableListOf<Double>()
             val operators = mutableListOf<String>()
 
-
-            for (token in tokens) {
-                if(token in operatorsList){
-                    operators.add(token)
-                } else {
-                    numbers.add(token.toDouble())
+            if(tokens.first() == "-"){
+                val firstNum = -tokens[1].toDouble()
+                numbers.add(firstNum)
+                var i = 2
+                while (i<tokens.size){
+                    val token = tokens[i]
+                    if(token in operatorsList){
+                        operators.add(token)
+                    } else {
+                        numbers.add(token.toDouble())
+                    }
+                    i++
+                }
+            } else {
+                for (token in tokens) {
+                    if(token in operatorsList){
+                        operators.add(token)
+                    } else {
+                        numbers.add(token.toDouble())
+                    }
                 }
             }
 
@@ -160,6 +266,10 @@ class MainActivity : AppCompatActivity() {
                     val num1 = numbers[i]
                     val num2 = numbers[i+1]
 
+                    if(num2 == 0.0 && op == "÷"){
+                        resultTV.text = "Сan't divide by zero"
+                        return
+                    }
                     val result = when(op){
                         "×" -> num1 * num2
                         "÷" -> num1 / num2
@@ -185,12 +295,7 @@ class MainActivity : AppCompatActivity() {
                 i++
             }
 
-            val resultParts = finalResult.toString().split(".")
-            if(resultParts[1] == "0"){
-                resultTV.text = resultParts[0]
-            } else {
-               resultTV.text = finalResult.toString().replace(".", ",")
-            }
+            showResult(formatResult(finalResult))
 
         } catch (e: Exception){
             resultTV.text = "Error"
