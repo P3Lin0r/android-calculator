@@ -79,7 +79,7 @@ class MainActivity : AppCompatActivity() {
                 inputValsTV.text = view.text.toString()
             } else{
                 if(equalsIsPressed){
-                    inputValsTV.text = lastResult + view.text.toString()
+                    inputValsTV.text = view.text.toString()
                     equalsIsPressed = false
                     lastResult = ""
                 } else{
